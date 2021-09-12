@@ -291,6 +291,7 @@ cat <<EOF >${WorkingDirectoryTelegram}/config/custom_scripts.json
 {
   "💰 Current coin progress": "custom_scripts/current_coin_progress.sh",
   "💰 All coins progress": "custom_scripts/all_coins_progress.sh",
+  "💰 Daily closing balances": "custom_scripts/daily_closing_balances.sh",
   "🦸 Appreciate Masa": "echo Masa is great",
   "Crypto chart": "python3 ../binance-chart-plugin-telegram-bot/db_chart.py",
   "Update crypto chart": "bash -c 'cd ../binance-chart-plugin-telegram-bot && git pull'",
@@ -305,6 +306,7 @@ cat <<EOF >${WorkingDirectoryTelegram}/config/custom_scripts.json
 {
   "💰 Current coin progress": "custom_scripts/current_coin_progress.sh",
   "💰 All coins progress": "custom_scripts/all_coins_progress.sh",
+  "💰 Daily closing balances": "custom_scripts/daily_closing_balances.sh",
   "🦸 Appreciate Masa": "echo Masa is great",
   "Database warmup": "python3 ../binance-trade-bot/database_warmup.py"
 }
@@ -312,7 +314,7 @@ EOF
 fi
 
 ##################################################################
-# Create Current_coin_progress.sh file
+# Create current_coin_progress.sh file
 #
 cat <<'EOF' >${WorkingDirectoryTelegram}/custom_scripts/current_coin_progress.sh
 #!/bin/bash
@@ -393,6 +395,26 @@ while read p; do
 done <../binance-trade-bot/supported_coin_list
 EOF
 sudo chmod +x ${WorkingDirectoryTelegram}/custom_scripts/all_coins_progress.sh
+
+##################################################################
+# Create daily_closing_balances.sh file
+#
+cat <<'EOF' >${WorkingDirectoryTelegram}/custom_scripts/daily_closing_balances.sh
+#!/bin/bash
+printf "Closing USD balance for previous 7 days:\n\n"
+DATABASE=../binance-trade-bot/data/crypto_trading.db
+COUNTER=0
+while [  $COUNTER -lt 7 ]; do
+  let COUNTER_TO=COUNTER+1
+  prev_day_value=$(sqlite3 -cmd '.timeout 1000' $DATABASE "select date(datetime) as dt, Sum(balance * usd_price) as total from coin_value where DATETIME(datetime) > DATETIME('now', '-$COUNTER_TO days') and DATETIME(datetime) < DATETIME('now', '-$COUNTER days') and DATETIME(datetime) like '% 23:59%';")
+  IN=$prev_day_value
+  arrIN=(${IN//|/ })
+  printf "Date: ${arrIN[0]}\n"
+  printf "Amount: \$${arrIN[1]}\n\n"
+  let COUNTER=COUNTER+1
+done
+EOF
+sudo chmod +x ${WorkingDirectoryTelegram}/custom_scripts/current_coin_progress.sh
 
 # End Custom script section
 ########################################################################################################################################################
